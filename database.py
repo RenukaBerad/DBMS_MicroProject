@@ -83,26 +83,23 @@ def create_raw_connection(cfg: Optional[DatabaseConfig] = None, force_retry: boo
         cfg = get_current_config()
 
     try:
+        conn_kwargs = {
+            "host": cfg.host,
+            "port": cfg.port,
+            "dbname": cfg.database,
+            "user": cfg.user,
+            "password": cfg.password,
+            "connect_timeout": 5
+        }
+        if cfg.sslmode:
+            conn_kwargs["sslmode"] = cfg.sslmode
+
         if DRIVER_NAME == "psycopg2":
-            conn = psycopg2_driver.connect(
-                host=cfg.host,
-                port=cfg.port,
-                dbname=cfg.database,
-                user=cfg.user,
-                password=cfg.password,
-                connect_timeout=2
-            )
+            conn = psycopg2_driver.connect(**conn_kwargs)
             _LAST_FAILURE_TIME = 0.0
             return conn
         else:
-            conn = psycopg_driver.connect(
-                host=cfg.host,
-                port=cfg.port,
-                dbname=cfg.database,
-                user=cfg.user,
-                password=cfg.password,
-                connect_timeout=2
-            )
+            conn = psycopg_driver.connect(**conn_kwargs)
             _LAST_FAILURE_TIME = 0.0
             return conn
     except Exception as e:

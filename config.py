@@ -25,22 +25,46 @@ class DatabaseConfig:
     database: str = "internal_marks_db"
     user: str = "postgres"
     password: str = ""
+    sslmode: Optional[str] = None
+    database_url: Optional[str] = None
 
     @classmethod
     def from_env(cls) -> "DatabaseConfig":
         """Instantiate configuration directly from environment variables."""
+        db_url = os.getenv("DATABASE_URL", "").strip()
+        if db_url:
+            from urllib.parse import urlparse
+            parsed = urlparse(db_url)
+            host = parsed.hostname or "localhost"
+            port = parsed.port or 5432
+            db_name = parsed.path.lstrip("/") if parsed.path else "internal_marks_db"
+            ssl = "require" if host not in ("localhost", "127.0.0.1") else None
+            return cls(
+                host=host,
+                port=port,
+                database=db_name,
+                user=parsed.username or "postgres",
+                password=parsed.password or "",
+                sslmode=ssl,
+                database_url=db_url
+            )
+
         port_raw = os.getenv("DB_PORT", "5432")
         try:
             port = int(port_raw)
         except ValueError:
             port = 5432
 
+        host = os.getenv("DB_HOST", "localhost").strip()
+        ssl = "require" if host not in ("localhost", "127.0.0.1") else None
+
         return cls(
-            host=os.getenv("DB_HOST", "localhost").strip(),
+            host=host,
             port=port,
             database=os.getenv("DB_NAME", "internal_marks_db").strip(),
             user=os.getenv("DB_USER", "postgres").strip(),
-            password=os.getenv("DB_PASSWORD", "").strip()
+            password=os.getenv("DB_PASSWORD", "").strip(),
+            sslmode=ssl
         )
 
     def to_dict(self) -> Dict[str, Any]:
