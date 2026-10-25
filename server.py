@@ -517,9 +517,10 @@ def execute_custom_sql():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    host = os.environ.get("HOST", "127.0.0.1")
+    host = os.environ.get("HOST", "0.0.0.0")
+    is_debug = os.environ.get("FLASK_DEBUG", "0") == "1"
     print(f"\n========================================================")
     print(f"  INTERNAL MARKS MANAGEMENT SYSTEM - WEB DASHBOARD")
     print(f"  Live at: http://{host}:{port}")
     print(f"========================================================\n")
-    app.run(host=host, port=port, debug=True)
+    app.run(host=host, port=port, debug=is_debug)
