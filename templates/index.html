@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Internal Marks Management System — College DBMS Micro-Project</title>
+  <meta name="description" content="A comprehensive database-driven web application for managing student internal assessment marks, calculating subject percentages, and generating analytical performance reports. Built with PostgreSQL.">
+  <link rel="stylesheet" href="/static/css/index.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+</head>
+<body>
+  <div id="app-container">
+    
+    <!-- ====================================================================
+         1. Left Navigation Sidebar
+         ==================================================================== -->
+    <aside id="sidebar">
+      <div class="brand-section">
+        <div class="brand-icon">🎓</div>
+        <div>
+          <div class="brand-title">MARKS SYSTEM</div>
+          <div class="brand-subtitle">DBMS Micro-Project</div>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <a class="nav-link active" id="nav-dashboard" onclick="switchTab('dashboard')">
+          <span>📊</span> Dashboard
+        </a>
+        <a class="nav-link" id="nav-students" onclick="switchTab('students')">
+          <span>👥</span> Students
+        </a>
+        <a class="nav-link" id="nav-subjects" onclick="switchTab('subjects')">
+          <span>📚</span> Subjects
+        </a>
+        <a class="nav-link" id="nav-marks" onclick="switchTab('marks')">
+          <span>✍️</span> Marks Entry
+        </a>
+        <a class="nav-link" id="nav-results" onclick="switchTab('results')">
+          <span>🎯</span> Marksheet & Results
+        </a>
+        <a class="nav-link" id="nav-reports" onclick="switchTab('reports')">
+          <span>📑</span> SQL Reports & Console
+        </a>
+        <a class="nav-link" id="nav-viva" onclick="switchTab('viva')">
+          <span>💡</span> DBMS & Viva Guide
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="db-pill" id="db-status-pill">
+          <div class="status-dot"></div>
+          <span id="db-status-text">PostgreSQL: Connected (Port 3000)</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ====================================================================
+         2. Main Application Wrapper
+         ==================================================================== -->
+    <div id="main-wrapper">
+      
+      <!-- Topbar Header -->
+      <header id="topbar">
+        <div class="topbar-title-box">
+          <h1 id="page-heading">Academic Dashboard Overview</h1>
+          <p id="page-subheading">Live aggregated metrics and performance insights from PostgreSQL</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-secondary" id="btn-refresh-data" onclick="refreshCurrentView(true)">
+            <span>🔄</span> Refresh Data
+          </button>
+        </div>
+      </header>
+
+      <!-- Dynamic Content Switcher Container -->
+      <main id="content-container">
+
+        <!-- ------------------------------------------------------------------
+             TAB 1: Dashboard Overview
+             ------------------------------------------------------------------ -->
+        <section id="view-dashboard" class="view-section active">
+          <!-- 6 KPI Metric Cards Grid -->
+          <div class="kpi-grid">
+            <div class="kpi-card indigo">
+              <div class="kpi-top-bar"></div>
+              <div class="kpi-header">
+                <span class="kpi-label">Total Students</span>
+                <div class="kpi-icon">👥</div>
+              </div>
+              <div class="kpi-value" id="kpi-students">--</div>
+              <div class="kpi-subtext">Registered across all divisions</div>
+            </div>
+
+            <div class="kpi-card cyan">
+              <div class="kpi-top-bar"></div>
+              <div class="kpi-header">
+                <span class="kpi-label">Active Subjects</span>
+                <div class="kpi-icon">📚</div>
+              </div>
+              <div class="kpi-value" id="kpi-subjects">--</div>
+              <div class="kpi-subtext">Configured curriculum subjects</div>
+            </div>
+
+            <div class="kpi-card purple">
+              <div class="kpi-top-bar"></div>
+              <div class="kpi-header">
+                <span class="kpi-label">Recorded Marks</span>
+                <div class="kpi-icon">📝</div>
+              </div>
+              <div class="kpi-value" id="kpi-marks-records">--</div>
+              <div class="kpi-subtext">Associative evaluation records</div>
+            </div>
+
+            <div class="kpi-card emerald">
+              <div class="kpi-top-bar"></div>
+              <div class="kpi-header">
+                <span class="kpi-label">Assessed Students</span>
+                <div class="kpi-icon">✓</div>
+              </div>
+              <div class="kpi-value" id="kpi-assessed">--</div>
+              <div class="kpi-subtext">At least 1 subject marked</div>
+            </div>
+
+            <div class="kpi-card rose">
+              <div class="kpi-top-bar"></div>
+              <div class="kpi-header">
+                <span class="kpi-label">Pending Evaluation</span>
+                <div class="kpi-icon">⚠️</div>
+              </div>
+              <div class="kpi-value" id="kpi-unmarked">--</div>
+              <div class="kpi-subtext">Students with 0 marks entered</div>
+            </div>
+
+            <div class="kpi-card amber">
+              <div class="kpi-top-bar"></div>
+              <div class="kpi-header">
+                <span class="kpi-label">Academic Average</span>
+                <div class="kpi-icon">⭐</div>
+              </div>
+              <div class="kpi-value" id="kpi-avg-pct">--%</div>
+              <div class="kpi-subtext">Overall cumulative score</div>
+            </div>
+          </div>
+
+          <!-- Recent Activity: 2 Cards (Recent Students & Recent Marks) -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 24px;">
+            
+            <!-- Card 1: Recently Registered Students -->
+            <div class="table-card">
+              <div class="table-header-bar">
+                <div>
+                  <div class="table-title">👥 Recently Registered Students</div>
+                  <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                    Latest student profiles added to table 'student'
+                  </div>
+                </div>
+              </div>
+              <div class="data-table-wrapper">
+                <table class="data-table" id="table-recent-students">
+                  <thead>
+                    <tr>
+                      <th style="width: 60px; text-align: center;">ID</th>
+                      <th>Student Name</th>
+                      <th style="text-align: center;">Roll</th>
+                      <th style="text-align: center;">Class & Div</th>
+                      <th style="text-align: center;">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbody-recent-students">
+                    <tr><td colspan="5" style="text-align: center; color: var(--text-dim); padding: 30px;">Loading student records...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Card 2: Recent Marks Evaluations Table Card -->
+            <div class="table-card">
+              <div class="table-header-bar">
+                <div>
+                  <div class="table-title">📝 Recent Marks Evaluations</div>
+                  <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                    Real-time marks ledger stream from table 'marks'
+                  </div>
+                </div>
+              </div>
+              <div class="data-table-wrapper">
+                <table class="data-table" id="table-recent-marks">
+                  <thead>
+                    <tr>
+                      <th>Marks ID</th>
+                      <th>Student Name</th>
+                      <th>Subject</th>
+                      <th style="text-align: right;">Score</th>
+                      <th>Percentage</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbody-recent-marks">
+                    <tr><td colspan="5" style="text-align: center; color: var(--text-dim); padding: 30px;">Loading marks records...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ------------------------------------------------------------------
+             TAB 2: Student Management
+             ------------------------------------------------------------------ -->
+        <section id="view-students" class="view-section">
+          <div class="split-layout">
+            <!-- Left Form Card -->
+            <div class="form-card">
+              <div class="card-title"><span>👤</span> Student Details</div>
+              <div class="card-subtitle">Manage student profiles (Maps to ER Entity: STUDENT)</div>
+
+              <form id="student-form" onsubmit="handleStudentSubmit(event)">
+                <div class="form-group">
+                  <label class="form-label" for="student-id-input">Student ID (Auto if blank):</label>
+                  <input type="number" id="student-id-input" class="form-input" placeholder="Leave blank for auto SERIAL">
+                  <div class="form-hint">PostgreSQL automatically assigns the next sequence integer</div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="student-name-input">Student Full Name <span class="required">*</span>:</label>
+                  <input type="text" id="student-name-input" class="form-input" placeholder="e.g. Aarav Sharma" required maxlength="100">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="student-roll-input">Roll Number <span class="required">*</span>:</label>
+                  <input type="text" id="student-roll-input" class="form-input" placeholder="e.g. 101" required maxlength="20">
+                  <div class="form-hint">Must be unique within the selected class and division</div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="student-class-select">Class <span class="required">*</span>:</label>
+                  <select id="student-class-select" class="form-select" required>
+                    <option value="FE-COMP">FE-COMP</option>
+                    <option value="SE-COMP">SE-COMP</option>
+                    <option value="TE-COMP" selected>TE-COMP</option>
+                    <option value="BE-COMP">BE-COMP</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="student-div-select">Division <span class="required">*</span>:</label>
+                  <select id="student-div-select" class="form-select" required>
+                    <option value="A" selected>A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                    <option value="D">D</option>
+                  </select>
+                </div>
+
+                <div class="btn-group-vertical">
+                  <button type="submit" id="btn-save-student" class="btn btn-success btn-block">
+                    <span>💾</span> Save Student
+                  </button>
+                  <button type="button" id="btn-update-student" class="btn btn-primary btn-block" style="display: none;" onclick="handleStudentUpdate()">
+                    <span>✏️</span> Update Selected Student
+                  </button>
+                  <button type="button" id="btn-clear-student" class="btn btn-secondary btn-block" onclick="resetStudentForm()">
+                    <span>🧹</span> Clear Form
+                  </button>
+                </div>
+
+                <div id="student-form-msg" class="form-feedback"></div>
+              </form>
+            </div>
+
+            <!-- Right Data Table Card -->
+            <div class="table-card">
+              <div class="table-header-bar">
+                <div class="table-title">Registered Students</div>
+                <div class="table-controls">
+                  <div class="search-box-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="search-student-input" placeholder="Search by name, roll, class..." oninput="handleStudentSearch()">
+                  </div>
+                </div>
+              </div>
+              <div class="data-table-wrapper">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 80px; text-align: center;">ID</th>
+                      <th>Full Name</th>
+                      <th style="text-align: center;">Roll No</th>
+                      <th style="text-align: center;">Class</th>
+                      <th style="text-align: center;">Division</th>
+                      <th style="text-align: center; width: 90px;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbody-students">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ------------------------------------------------------------------
+             TAB 3: Subject Management
+             ------------------------------------------------------------------ -->
+        <section id="view-subjects" class="view-section">
+          <div class="split-layout">
+            <!-- Left Form Card -->
+            <div class="form-card">
+              <div class="card-title"><span>📚</span> Subject Details</div>
+              <div class="card-subtitle">Manage curriculum courses (Maps to ER Entity: SUBJECT)</div>
+
+              <form id="subject-form" onsubmit="handleSubjectSubmit(event)">
+                <div class="form-group">
+                  <label class="form-label" for="subject-id-input">Subject ID (Auto if blank):</label>
+                  <input type="number" id="subject-id-input" class="form-input" placeholder="Leave blank for auto SERIAL">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="subject-name-input">Subject Name <span class="required">*</span>:</label>
+                  <input type="text" id="subject-name-input" class="form-input" placeholder="e.g. Database Management Systems" required maxlength="100">
+                  <div class="form-hint">Unique constraint enforced across all subjects</div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="subject-max-input">Maximum Marks (CHECK > 0) <span class="required">*</span>:</label>
+                  <input type="number" id="subject-max-input" class="form-input" value="100" min="1" max="1000" required>
+                  <div class="form-hint">e.g. 100 for Theory, 50 for Lab, 25 for Term Work</div>
+                </div>
+
+                <div class="btn-group-vertical">
+                  <button type="submit" id="btn-save-subject" class="btn btn-success btn-block">
+                    <span>💾</span> Save Subject
+                  </button>
+                  <button type="button" id="btn-update-subject" class="btn btn-primary btn-block" style="display: none;" onclick="handleSubjectUpdate()">
+                    <span>✏️</span> Update Selected Subject
+                  </button>
+                  <button type="button" id="btn-clear-subject" class="btn btn-secondary btn-block" onclick="resetSubjectForm()">
+                    <span>🧹</span> Clear Form
+                  </button>
+                </div>
+
+                <div id="subject-form-msg" class="form-feedback"></div>
+              </form>
+            </div>
+
+            <!-- Right Data Table Card -->
+            <div class="table-card">
+              <div class="table-header-bar">
+                <div class="table-title">Course Curriculum Subjects</div>
+                <div class="table-controls">
+                  <div class="search-box-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="search-subject-input" placeholder="Search subjects..." oninput="handleSubjectSearch()">
+                  </div>
+                </div>
+              </div>
+              <div class="data-table-wrapper">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 80px; text-align: center;">ID</th>
+                      <th>Subject Name</th>
+                      <th style="text-align: center;">Max Marks</th>
+                      <th style="text-align: center;">Recorded Marks</th>
+                      <th style="text-align: center; width: 90px;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbody-subjects">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ------------------------------------------------------------------
+             TAB 4: Marks Entry
+             ------------------------------------------------------------------ -->
+        <section id="view-marks" class="view-section">
+          <div class="split-layout">
+            <!-- Left Form Card -->
+            <div class="form-card">
+              <div class="card-title"><span>✍️</span> Marks Allocation</div>
+              <div class="card-subtitle">Associative Entity resolving Student (M) : (N) Subject</div>
+
+              <form id="marks-form" onsubmit="handleMarksSubmit(event)">
+                <div class="form-group">
+                  <label class="form-label" for="marks-student-select">Select Student <span class="required">*</span>:</label>
+                  <select id="marks-student-select" class="form-select" required>
+                    <option value="">-- Choose Student --</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="marks-subject-select">Select Subject <span class="required">*</span>:</label>
+                  <select id="marks-subject-select" class="form-select" onchange="updateMaxMarksHint()" required>
+                    <option value="">-- Choose Subject --</option>
+                  </select>
+                  <div id="marks-subject-hint" class="form-hint" style="color: #60A5FA; font-weight: 500; margin-top: 6px;">
+                    Subject maximum: -- marks
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="marks-score-input">Marks Obtained (0 &lt;= marks &lt;= Max) <span class="required">*</span>:</label>
+                  <input type="number" step="0.5" id="marks-score-input" class="form-input" placeholder="e.g. 85.5" required min="0">
+                  <div class="form-hint">Enforced by PostgreSQL PL/pgSQL trigger check_marks_within_max()</div>
+                </div>
+
+                <div class="btn-group-vertical">
+                  <button type="submit" id="btn-save-marks" class="btn btn-success btn-block">
+                    <span>💾</span> Save Marks Record
+                  </button>
+                  <button type="button" id="btn-update-marks" class="btn btn-primary btn-block" style="display: none;" onclick="handleMarksUpdate()">
+                    <span>✏️</span> Update Score
+                  </button>
+                  <button type="button" id="btn-clear-marks" class="btn btn-secondary btn-block" onclick="resetMarksForm()">
+                    <span>🧹</span> Clear Form
+                  </button>
+                </div>
+
+                <div id="marks-form-msg" class="form-feedback"></div>
+              </form>
+            </div>
+
+            <!-- Right Data Table Card -->
+            <div class="table-card">
+              <div class="table-header-bar">
+                <div class="table-title">Marks Ledger Records</div>
+                <div class="table-controls">
+                  <select id="filter-marks-class" class="form-select" style="width: 130px; padding: 6px 10px;" onchange="loadMarksData()">
+                    <option value="ALL">All Classes</option>
+                  </select>
+                  <div class="search-box-wrap" style="width: 200px;">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="search-marks-input" placeholder="Search..." oninput="loadMarksData()">
+                  </div>
+                </div>
+              </div>
+              <div class="data-table-wrapper">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 60px; text-align: center;">ID</th>
+                      <th style="text-align: center;">Roll</th>
+                      <th>Student Name</th>
+                      <th style="text-align: center;">Class</th>
+                      <th>Subject</th>
+                      <th style="text-align: right;">Score</th>
+                      <th style="text-align: right;">Max</th>
+                      <th>Percentage</th>
+                      <th style="text-align: center; width: 85px;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbody-marks">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ------------------------------------------------------------------
+             TAB 5: Marksheet & Student Results
+             ------------------------------------------------------------------ -->
+        <section id="view-results" class="view-section">
+          <!-- Selection Bar -->
+          <div class="table-card" style="margin-bottom: 24px;">
+            <div class="table-header-bar">
+              <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; width: 100%;">
+                <div style="font-weight: 600; font-size: 14px;">Select Student to Generate Marksheet:</div>
+                <select id="results-student-select" class="form-select" style="max-width: 380px;" onchange="loadStudentMarksheet()">
+                  <option value="">-- Choose Student --</option>
+                </select>
+                <button class="btn btn-primary" onclick="window.print()">
+                  <span>🖨️</span> Print / Export Marksheet
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Marksheet Paper Card -->
+          <div class="marksheet-card" id="marksheet-display" style="display: none;">
+            <div class="marksheet-header">
+              <div>
+                <div class="marksheet-college">COLLEGE OF ENGINEERING & TECHNOLOGY</div>
+                <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+                  Department of Computer Engineering — Internal Assessment Marksheet
+                </div>
+              </div>
+              <div style="text-align: right;">
+                <div class="badge badge-distinction" id="marksheet-grade-badge">DISTINCTION</div>
+              </div>
+            </div>
+
+            <!-- Student Metadata Grid -->
+            <div class="marksheet-meta-grid">
+              <div>
+                <div class="meta-item-label">Student Name</div>
+                <div class="meta-item-value" id="ms-student-name">--</div>
+              </div>
+              <div>
+                <div class="meta-item-label">Roll Number</div>
+                <div class="meta-item-value" id="ms-student-roll">--</div>
+              </div>
+              <div>
+                <div class="meta-item-label">Class & Division</div>
+                <div class="meta-item-value" id="ms-student-class-div">--</div>
+              </div>
+              <div>
+                <div class="meta-item-label">Student ID</div>
+                <div class="meta-item-value" id="ms-student-id">--</div>
+              </div>
+            </div>
+
+            <!-- Subject-wise Marks Table -->
+            <table class="data-table" style="margin-top: 16px;">
+              <thead>
+                <tr>
+                  <th style="width: 50px; text-align: center;">#</th>
+                  <th>Subject Title</th>
+                  <th style="text-align: right;">Maximum Marks</th>
+                  <th style="text-align: right;">Marks Obtained</th>
+                  <th>Visual Score</th>
+                  <th style="text-align: center;">Percentage</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-marksheet-subjects">
+                <!-- Subject rows -->
+              </tbody>
+            </table>
+
+            <!-- Marksheet Aggregate Summary Box -->
+            <div class="marksheet-summary-box">
+              <div>
+                <div style="font-size: 13px; color: var(--text-muted);">Cumulative Evaluation Summary</div>
+                <div style="font-size: 15px; font-weight: 600; color: #FFF; margin-top: 4px;" id="ms-marks-ratio">
+                  Total Marks: 0 / 0
+                </div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Overall Percentage</div>
+                <div class="summary-score-large" id="ms-overall-pct">0.00%</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty placeholder if no student selected -->
+          <div id="marksheet-empty-state" class="table-card" style="padding: 60px 20px; text-align: center;">
+            <div style="font-size: 40px; margin-bottom: 12px;">📄</div>
+            <div style="font-family: var(--font-heading); font-size: 17px; font-weight: 700; color: #FFF;">
+              No Student Selected
+            </div>
+            <div style="color: var(--text-dim); font-size: 13.5px; margin-top: 6px;">
+              Select a student from the dropdown above to view and calculate their complete academic marksheet.
+            </div>
+          </div>
+        </section>
+
+        <!-- ------------------------------------------------------------------
+             TAB 6: SQL Analytical Reports & Console
+             ------------------------------------------------------------------ -->
+        <section id="view-reports" class="view-section">
+          <!-- Analytical Report Buttons Bar -->
+          <div class="table-card" style="margin-bottom: 24px; padding: 18px 22px;">
+            <div style="font-size: 14px; font-weight: 700; color: #FFF; margin-bottom: 12px;">
+              Built-in SQL Analytical Reports (Faculty Viva Demonstrations)
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button class="btn btn-secondary" onclick="loadReport('student-wise')">
+                <span>📋</span> 1. Student-wise Marks
+              </button>
+              <button class="btn btn-secondary" onclick="loadReport('subject-performance')">
+                <span>📈</span> 2. Subject Performance (AVG/MIN/MAX)
+              </button>
+              <button class="btn btn-secondary" onclick="loadReport('class-summary')">
+                <span>🏢</span> 3. Class & Division Summary
+              </button>
+              <button class="btn btn-secondary" onclick="loadReport('without-marks')">
+                <span>⚠️</span> 4. Unassessed Students (LEFT JOIN)
+              </button>
+            </div>
+          </div>
+
+          <!-- Interactive SQL Console -->
+          <div class="form-card" style="margin-bottom: 24px;">
+            <div class="card-title"><span>💻</span> Interactive SQL Query Console</div>
+            <div class="card-subtitle">
+              Execute live read-only analytical SQL queries against the PostgreSQL database.
+            </div>
+
+            <div class="query-presets-chips">
+              <span style="font-size: 12px; color: var(--text-muted); align-self: center;">Viva Presets:</span>
+              <button class="chip" onclick="setPresetQuery('q1')">Marksheet Join</button>
+              <button class="chip" onclick="setPresetQuery('q2')">Subject Aggregates</button>
+              <button class="chip" onclick="setPresetQuery('q3')">Class Comparison</button>
+              <button class="chip" onclick="setPresetQuery('q4')">Outer Join (NULL test)</button>
+              <button class="chip" onclick="setPresetQuery('q5')">Distinction Scorers</button>
+            </div>
+
+            <div class="sql-editor-container">
+              <textarea id="sql-console-input" class="sql-textarea" rows="4" placeholder="Enter SQL SELECT statement..."></textarea>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <button class="btn btn-primary" id="btn-run-sql" onclick="executeCustomQuery()">
+                <span>⚡</span> Execute SQL Query
+              </button>
+              <span id="sql-query-timing" style="font-size: 12px; color: var(--text-dim);"></span>
+            </div>
+          </div>
+
+          <!-- Report Results Data Table -->
+          <div class="table-card">
+            <div class="table-header-bar">
+              <div class="table-title" id="report-title">Query Execution Results</div>
+              <div style="font-size: 12.5px; color: var(--text-muted);" id="report-count-label">0 rows</div>
+            </div>
+            <div class="data-table-wrapper">
+              <table class="data-table">
+                <thead id="thead-report">
+                  <tr><th>Run a report or execute an SQL query to view results</th></tr>
+                </thead>
+                <tbody id="tbody-report">
+                  <tr><td style="color: var(--text-dim); text-align: center; padding: 40px;">No query results loaded yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ------------------------------------------------------------------
+             TAB 7: DBMS Concepts & Viva Reference Guide
+             ------------------------------------------------------------------ -->
+        <section id="view-viva" class="view-section">
+          <div class="split-layout" style="grid-template-columns: 1fr 1fr;">
+            
+            <!-- Conceptual Schema Card -->
+            <div class="form-card">
+              <div class="card-title"><span>📐</span> Conceptual ER & Relational Model</div>
+              <div class="card-subtitle">Complete Entity-Relationship mapping for the academic system</div>
+
+              <div style="font-size: 13.5px; line-height: 1.7; color: #CBD5E1;">
+                <p><strong>1. Strong Entities:</strong></p>
+                <ul style="margin: 8px 0 16px 20px; color: var(--text-muted);">
+                  <li><code style="color: #A5B4FC;">STUDENT</code>: Attributes (<code style="color: #F43F5E;">student_id [PK]</code>, name, roll_no, class_name, division).</li>
+                  <li><code style="color: #A5B4FC;">SUBJECT</code>: Attributes (<code style="color: #F43F5E;">subject_id [PK]</code>, subject_name [UNIQUE], max_marks [CHECK > 0]).</li>
+                </ul>
+
+                <p><strong>2. Associative Entity (M:N Resolution):</strong></p>
+                <ul style="margin: 8px 0 16px 20px; color: var(--text-muted);">
+                  <li><code style="color: #A5B4FC;">MARKS</code>: Resolves Many-to-Many relationship between Student and Subject.</li>
+                  <li>Foreign Keys: <code style="color: #60A5FA;">student_id [FK → student]</code>, <code style="color: #60A5FA;">subject_id [FK → subject]</code>.</li>
+                  <li>Constraint: <code style="color: #FBBF24;">UNIQUE(student_id, subject_id)</code> prevents duplicate evaluations.</li>
+                  <li>Referential Action: <code style="color: #34D399;">ON DELETE RESTRICT ON UPDATE CASCADE</code> prevents orphaned records.</li>
+                </ul>
+
+                <p><strong>3. Normalization (3NF Justification):</strong></p>
+                <ul style="margin: 8px 0 16px 20px; color: var(--text-muted);">
+                  <li><strong>1NF:</strong> Every column contains atomic scalar values (no repeating groups).</li>
+                  <li><strong>2NF:</strong> In 1NF and no non-prime attribute depends on a proper subset of any candidate key.</li>
+                  <li><strong>3NF:</strong> In 2NF and no transitive functional dependencies exist ($X \to Y$ holds only if $X$ is a superkey).</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- DBMS Integrity Triggers Card -->
+            <div class="form-card">
+              <div class="card-title"><span>🛡️</span> PostgreSQL Constraints & Triggers</div>
+              <div class="card-subtitle">Active integrity enforcement running in PostgreSQL 18</div>
+
+              <div style="font-size: 13.5px; line-height: 1.7; color: #CBD5E1;">
+                <p><strong>1. PL/pgSQL Trigger: Marks Upper Bound Check</strong></p>
+                <div style="background: #060913; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 12px; font-family: var(--font-mono); font-size: 11.5px; color: #38BDF8; margin: 10px 0 16px 0;">
+CREATE OR REPLACE FUNCTION check_marks_within_max()<br>
+RETURNS TRIGGER AS $$<br>
+DECLARE v_max_marks NUMERIC;<br>
+BEGIN<br>
+&nbsp;&nbsp;SELECT max_marks INTO v_max_marks<br>
+&nbsp;&nbsp;FROM subject WHERE subject_id = NEW.subject_id;<br>
+&nbsp;&nbsp;IF NEW.marks_obtained &gt; v_max_marks THEN<br>
+&nbsp;&nbsp;&nbsp;&nbsp;RAISE EXCEPTION 'Score % exceeds max %',<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NEW.marks_obtained, v_max_marks;<br>
+&nbsp;&nbsp;END IF;<br>
+&nbsp;&nbsp;RETURN NEW;<br>
+END; $$ LANGUAGE plpgsql;
+                </div>
+
+                <p><strong>2. PL/pgSQL Trigger: Maximum Marks Reduction Guard</strong></p>
+                <div style="background: #060913; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 12px; font-family: var(--font-mono); font-size: 11.5px; color: #38BDF8; margin: 10px 0 16px 0;">
+-- Prevents a professor from accidentally lowering max_marks<br>
+-- below any already-awarded student marks in the database.<br>
+CREATE TRIGGER trg_check_subject_max_marks<br>
+BEFORE UPDATE OF max_marks ON subject<br>
+FOR EACH ROW EXECUTE FUNCTION check_subject_max_marks_update();
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- Application Logic -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
